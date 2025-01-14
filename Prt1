@@ -1,0 +1,211 @@
+# Part 1: UI Components and Styling
+
+## Overview
+This section contains the React components that make up the user interface of our chat application. We're using Tailwind CSS for styling and organizing our components for maximum reusability and maintainability.
+
+## Message Component (Message.jsx)
+```jsx
+const Message = ({ content, timestamp, role }) => {
+  return (
+    <div className={`flex ${role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      <div
+        className={`max-w-[85%] md:max-w-[75%] p-3 rounded-lg ${
+          role === 'user'
+            ? 'bg-purple-600 text-white'
+            : 'bg-gray-800 text-gray-200'
+        }`}
+      >
+        <p className="text-sm whitespace-pre-wrap">{content}</p>
+        <p className="text-xs mt-1 opacity-70">
+          {new Date(timestamp).toLocaleTimeString()}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Message;
+```
+
+## ChatInput Component (ChatInput.jsx)
+```jsx
+import { Send } from 'lucide-react';
+
+const ChatInput = ({ input, setInput, onSubmit, loading, inputRef }) => {
+  return (
+    <div className="bg-gray-900 border-t border-gray-800 p-4">
+      <div className="max-w-3xl mx-auto">
+        <form onSubmit={onSubmit} className="flex space-x-4">
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            className="flex-1 p-3 bg-gray-800 border-gray-700 text-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-500"
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none disabled:opacity-50 transition-colors"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default ChatInput;
+```
+
+## ConversationSidebar Component (ConversationSidebar.jsx)
+```jsx
+import { X } from 'lucide-react';
+
+const ConversationSidebar = ({ 
+  conversations, 
+  onSelect, 
+  shown, 
+  onClose 
+}) => {
+  return (
+    <div 
+      className={`fixed inset-y-0 left-0 transform ${
+        shown ? 'translate-x-0' : '-translate-x-full'
+      } lg:relative lg:translate-x-0 lg:w-64 transition-transform duration-200 ease-in-out z-30`}
+    >
+      <div className="h-full bg-gray-900 shadow-lg lg:shadow-none p-4">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-gray-200">Conversations</h2>
+          <button 
+            onClick={onClose}
+            className="lg:hidden p-2 hover:bg-gray-800 rounded-full"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="space-y-2">
+          {conversations.map((conv, index) => (
+            <button
+              key={index}
+              onClick={() => onSelect(conv.filename)}
+              className="w-full p-2 text-left hover:bg-gray-800 rounded-lg text-sm transition-colors"
+            >
+              <div className="font-medium truncate text-gray-300">
+                {new Date(conv.timestamp).toLocaleDateString()}
+              </div>
+              <div className="text-gray-500 text-xs">
+                {conv.message_count} messages
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ConversationSidebar;
+```
+
+## LoadingIndicator Component (LoadingIndicator.jsx)
+```jsx
+const LoadingIndicator = () => {
+  return (
+    <div className="flex justify-start">
+      <div className="bg-gray-800 p-3 rounded-lg">
+        <div className="flex space-x-2">
+          <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" />
+          <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce delay-100" />
+          <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce delay-200" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default LoadingIndicator;
+```
+
+## Styling Configuration (tailwind.config.js)
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        gray: {
+          800: '#1F2937',
+          900: '#111827',
+        },
+        purple: {
+          500: '#8B5CF6',
+          600: '#7C3AED',
+          700: '#6D28D9',
+        },
+      },
+      animation: {
+        'bounce': 'bounce 1s infinite',
+      },
+      keyframes: {
+        bounce: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-4px)' },
+        },
+      },
+    },
+  },
+  plugins: [],
+}
+```
+
+## Global Styles (index.css)
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1F2937;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4B5563;
+}
+
+/* Ensure smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent text selection on buttons */
+button {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+```
+
+Each component is designed to be:
+- Fully responsive across all device sizes
+- Accessible with proper ARIA attributes and keyboard navigation
+- Styled consistently using Tailwind CSS
+- Easy to maintain and modify
+- Reusable across different parts of the application
+
+The styling uses a dark theme with purple accents to reduce eye strain while maintaining good contrast ratios for accessibility. All animations and transitions are optimized for performance.
