@@ -1,0 +1,156 @@
+# Chat Interface Installation Guide
+
+## Frontend Setup
+
+1. Create a new React project using Vite:
+```bash
+npm create vite@latest chat-interface -- --template react
+cd chat-interface
+```
+
+2. Install required dependencies:
+```bash
+npm install lucide-react tailwindcss postcss autoprefixer
+```
+
+3. Initialize Tailwind CSS:
+```bash
+npx tailwindcss init -p
+```
+
+4. Replace content of `tailwind.config.js`:
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+5. Add to `src/index.css`:
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+6. Create new file `src/components/ResponsiveChatInterface.jsx` with the provided component code.
+
+7. Update `src/App.jsx`:
+```jsx
+import ResponsiveChatInterface from './components/ResponsiveChatInterface'
+
+function App() {
+  return (
+    <ResponsiveChatInterface />
+  )
+}
+
+export default App
+```
+
+8. Start development server:
+```bash
+npm run dev
+```
+
+## Backend Setup
+
+1. Create backend directory:
+```bash
+mkdir chat-backend
+cd chat-backend
+```
+
+2. Create and activate virtual environment:
+
+Windows:
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+macOS/Linux:
+```bash
+python -m venv venv
+source venv/bin/activate
+```
+
+3. Install Python packages:
+```bash
+pip install fastapi uvicorn httpx python-dotenv aiofiles
+```
+
+4. Add CORS middleware to your existing FastAPI code in `main.py`:
+```python
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Vite's default port
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+5. Start backend server:
+```bash
+uvicorn main:app --reload
+```
+
+## Project Structure
+
+```
+project/
+├── chat-interface/          # Frontend
+│   ├── src/
+│   │   ├── components/
+│   │   │   └── ResponsiveChatInterface.jsx
+│   │   ├── App.jsx
+│   │   └── index.css
+│   ├── package.json
+│   └── tailwind.config.js
+│
+└── chat-backend/           # Backend
+    ├── venv/
+    ├── main.py
+    └── requirements.txt
+```
+
+## Running the Application
+
+1. Start backend server (in chat-backend directory):
+```bash
+uvicorn main:app --reload
+```
+
+2. In a separate terminal, start frontend (in chat-interface directory):
+```bash
+npm run dev
+```
+
+3. Access the application at: http://localhost:5173
+
+## Troubleshooting
+
+If you encounter CORS errors:
+- Ensure the backend CORS middleware is configured correctly
+- Verify the frontend is making requests to the correct backend URL
+- Check that both servers are running (frontend on 5173, backend on 8000)
+
+If packages fail to install:
+- Ensure you have Node.js and Python installed
+- Check that you're in the correct directory
+- Verify your virtual environment is activated when installing Python packages
+
+For any other issues:
+- Check the terminal output for error messages
+- Verify all file paths match the project structure
+- Ensure all code is copied completely without missing any closing brackets or quotes
