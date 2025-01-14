@@ -1,0 +1,246 @@
+# Part 3: API Integration Layer
+
+This section handles all communication between the frontend and backend services. We'll create a robust API service that manages requests, handles errors, and provides a clean interface for our application.
+
+## API Service (api.js)
+```javascript
+import axios from 'axios';
+
+// Configure the base axios instance with defaults and interceptors
+const apiClient = axios.create({
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor for API calls
+apiClient.interceptors.request.use(
+  (config) => {
+    // You could add authentication headers here
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for API calls
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      // Handle token refresh or other auth logic here
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// Chat API endpoints
+export const chatApi = {
+  // Send a message to the chat endpoint
+  sendMessage: async (message) => {
+    try {
+      const response = await apiClient.post('/chat/', message);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+    }
+  },
+
+  // Fetch saved conversations
+  getSavedConversations: async () => {
+    try {
+      const response = await apiClient.get('/saved_conversations/');
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+    }
+  },
+
+  // Load a specific conversation
+  loadConversation: async (filename) => {
+    try {
+      const response = await apiClient.get(`/load_conversation/${filename}`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error);
+    }
+  }
+};
+
+// Error handling utility
+const handleApiError = (error) => {
+  if (error.response) {
+    // Server responded with a status code outside of 2xx range
+    const message = error.response.data?.detail || 'An error occurred';
+    throw new Error(message);
+  } else if (error.request) {
+    // Request was made but no response received
+    throw new Error('No response from server');
+  } else {
+    // Error setting up the request
+    throw new Error('Error setting up request');
+  }
+};
+
+export default chatApi;
+```
+
+## WebSocket Service (websocket.js)
+```javascript
+class WebSocketService {
+  constructor(url) {
+    this.url = url;
+    this.ws = null;
+    this.listeners = new Map();
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+  }
+
+  connect() {
+    this.ws = new WebSocket(this.url);
+
+    this.ws.onopen = () => {
+      console.log('WebSocket connected');
+      this.reconnectAttempts = 0;
+      this.emit('connected', true);
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        this.emit('message', data);
+      } catch (error) {
+        console.error('WebSocket message parse error:', error);
+      }
+    };
+
+    this.ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      this.emit('connected', false);
+      this.attemptReconnect();
+    };
+
+    this.ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      this.emit('error', error);
+    };
+  }
+
+  attemptReconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      console.log(`Reconnecting... Attempt ${this.reconnectAttempts}`);
+      setTimeout(() => this.connect(), 2000 * this.reconnectAttempts);
+    }
+  }
+
+  send(message) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      throw new Error('WebSocket is not connected');
+    }
+  }
+
+  subscribe(event, callback) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event).add(callback);
+  }
+
+  unsubscribe(event, callback) {
+    const listeners = this.listeners.get(event);
+    if (listeners) {
+      listeners.delete(callback);
+    }
+  }
+
+  emit(event, data) {
+    const listeners = this.listeners.get(event);
+    if (listeners) {
+      listeners.forEach(callback => callback(data));
+    }
+  }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+    }
+  }
+}
+
+// Create and export websocket instance
+export const wsService = new WebSocketService('ws://localhost:8000/ws');
+
+export default wsService;
+```
+
+## API Hooks (hooks/useApi.js)
+```javascript
+import { useState, useCallback } from 'react';
+import chatApi from '../services/api';
+
+export const useApi = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const callApi = useCallback(async (apiFunction, ...args) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await apiFunction(...args);
+      return result;
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Specialized chat API functions
+  const sendMessage = useCallback((message) => 
+    callApi(chatApi.sendMessage, message), [callApi]);
+
+  const loadConversation = useCallback((filename) => 
+    callApi(chatApi.loadConversation, filename), [callApi]);
+
+  const getSavedConversations = useCallback(() => 
+    callApi(chatApi.getSavedConversations), [callApi]);
+
+  return {
+    loading,
+    error,
+    sendMessage,
+    loadConversation,
+    getSavedConversations,
+  };
+};
+```
+
+This API integration layer provides:
+
+1. A centralized API client with interceptors for handling authentication and errors
+2. WebSocket service for real-time communication
+3. Custom hooks for easy API integration in components
+4. Comprehensive error handling
+5. Automatic reconnection for WebSocket connections
+6. TypeScript support (if using TypeScript)
+
+The modular design allows for:
+- Easy testing and mocking of API calls
+- Consistent error handling across the application
+- Simple addition of new API endpoints
+- Centralized configuration management
+- Proper separation of concerns
+
+The WebSocket service enables real-time features like typing indicators and instant message delivery, while the API service handles traditional HTTP requests for data persistence and retrieval.
